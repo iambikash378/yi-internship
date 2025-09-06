@@ -1,7 +1,16 @@
+import { isKeyObject } from "util/types";
 import { db } from "../index.js";
 
-export async function getAllAuthors(callback){
-    db.all("SELECT * FROM authors", (err, rows) =>{
+export async function getAllAuthors(queryObject, callback){
+    let sql = "SELECT * FROM authors WHERE 1=1";
+    const params = [];
+
+    for (const [key, value] of Object.entries(queryObject)){
+        sql+=` AND ${key} = ? `;
+        params.push(value);
+    }
+
+    db.all(sql, params , (err, rows) =>{
         if (err) return callback(err);
         callback(null, rows)
     })
@@ -18,8 +27,16 @@ export function addNewAuthor(authorDetails, callback){
     )
 }
 
-export async function getAllBooks(callback){
-    db.all("SELECT * FROM books", (err, rows) =>{
+export async function getAllBooks(queryObject, callback){
+    let sql = `SELECT * FROM books WHERE 1=1`;
+    const params = [];
+
+    for (const [key, value] of Object.entries(queryObject)){
+        sql+=` AND ${key} = ?`;
+        params.push(value)
+    }
+
+    db.all(sql, params, (err, rows) =>{
         if (err) return callback(err);
         callback(null, rows)
     })

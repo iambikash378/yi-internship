@@ -2,6 +2,7 @@ import {createServer, IncomingMessage, ServerResponse} from 'http';
 import dotenv from 'dotenv';
 import sqlite3 from 'sqlite3';
 import { addNewAuthor, getAllAuthors, getAllBooks, addNewBook, updateBook } from './controllers/mainController.js';
+import {parse} from 'url';
 
 sqlite3.verbose()
 
@@ -18,16 +19,21 @@ dotenv.config();
 
 const PORT = process.env.PORT || 8000;
 
-const server = createServer()
- ;
+const server = createServer();
 
 server.on("request", (req: IncomingMessage, res: ServerResponse) =>{
-    console.log("New request received")
+    console.log("New request received");
+
+    const parsedUrl = parse(req.url, true);
+
+    const queryObject = parsedUrl.query;
+    const pathName = parsedUrl.pathname;
 
     switch(true){
-        case req.url === '/authors' :{
+
+        case pathName === '/authors' :{
             if(req.method === 'GET'){
-                    getAllAuthors((err,rows) =>{
+                    getAllAuthors(queryObject, (err,rows) =>{
                         if (err) {
                             return res.end("Database Error")
                         }
@@ -62,12 +68,12 @@ server.on("request", (req: IncomingMessage, res: ServerResponse) =>{
         break;
         }
 
-        case req.url.startsWith('/books'):{
-            if (req.url === '/books' || req.url === '/books/'){
+        case pathName.startsWith('/books'):{
+            if (pathName === '/books' || pathName === '/books/'){
                 if(req.method === 'GET'){
-                    getAllBooks((err,rows) =>{
+                    getAllBooks(queryObject, (err,rows) =>{
                         if (err) {
-                            return res.end("Error retrieving books from database")
+                            return res.end("Error retrieving books from database");
                         }
                         res.end(JSON.stringify(rows))
                     })
@@ -100,7 +106,7 @@ server.on("request", (req: IncomingMessage, res: ServerResponse) =>{
                 }
             } else {
                 if (req.method === 'PUT'){
-                    const id = req.url.split('/')[2];
+                    const id = pathName.split('/')[2];
                     let body = '';
                     req.on('data', (chunk)=>{
                         body+=chunk.toString();
@@ -110,7 +116,7 @@ server.on("request", (req: IncomingMessage, res: ServerResponse) =>{
                         try{
                             const bookUpdatedDetails = JSON.parse(body)
                             updateBook(bookUpdatedDetails, id, (err) =>{
-                                if (err) return res.end("Error updating database", err)
+                                if (err) return res.end("Error updating database")
                                     res.writeHead(201, {'Content-Type': 'application/json'})
                                     res.end(JSON.stringify({
                                         message:"book updated",
