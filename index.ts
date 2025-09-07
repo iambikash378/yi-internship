@@ -135,19 +135,30 @@ server.on("request", (req: IncomingMessage, res: ServerResponse) =>{
     
                     req.on('end', () =>{
                         try{
-                            const bookUpdatedDetails = JSON.parse(body)
-                            updateBook(bookUpdatedDetails, id, (err) =>{
-                                if (err) return res.end("Error updating database")
-                                    res.writeHead(201, {'Content-Type': 'application/json'})
-                                    res.end(JSON.stringify({
-                                        message:"book updated",
-                                        book_id: id,
-                                        book_name: bookUpdatedDetails.title,
-                                        book_isbn: bookUpdatedDetails.isbn,
-                                        published_year: bookUpdatedDetails.published_year,
-                                        author_id: bookUpdatedDetails.author_id,
-                                    }))
-                            })
+                            const bookUpdatedDetails = JSON.parse(body);
+
+                            bookValidation(bookUpdatedDetails, (err) =>{
+                                if (err) {
+                                    res.writeHead(400, {'Content-Type':'application/json'});
+                                    return res.end(JSON.stringify({error:err}))
+                                }
+
+                                updateBook(bookUpdatedDetails, id, (err) =>{
+                                    if (err) return res.end("Error updating database")
+                                        res.writeHead(201, {'Content-Type': 'application/json'})
+                                        res.end(JSON.stringify({
+                                            message:"book updated",
+                                            book_id: id,
+                                            book_name: bookUpdatedDetails.title,
+                                            book_isbn: bookUpdatedDetails.isbn,
+                                            published_year: bookUpdatedDetails.published_year,
+                                            author_id: bookUpdatedDetails.author_id,
+                                        }))
+                                });
+    
+                            });
+
+
                         } catch (err){
                             res.end("Couldn't update book details")
                         }
