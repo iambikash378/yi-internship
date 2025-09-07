@@ -10,7 +10,7 @@ export async function getAllAuthors(queryObject, callback){
         WITH booksByAuthor AS (
             SELECT author_id, COUNT(*) bookCount
             FROM books
-            GROUP BY author_id) 
+            GROUP BY author_id)
         SELECT a.* , bba.bookCount
         FROM authors a
         LEFT JOIN booksByAuthor bba
@@ -26,51 +26,6 @@ export async function getAllAuthors(queryObject, callback){
         const order = queryObject.order?.toUpperCase() === 'ASC' ? "ASC" : "DESC";
         sql += ` ORDER BY bba.bookCount ${order}`;
     }
-
-    // for (const [key, value] of Object.entries(queryObject)){
-
-    //     if()
-
-    //     switch(key){
-
-    //         case('name'):{
-    //             params.push(` AND name LIKE %${value}%`);
-    //             break;
-    //         }
-
-    //         case('sort'):{
-    //             if(value === 'true')
-    //                 sql = `
-    //                     WITH booksByAuthor AS (
-    //                         SELECT author_id, COUNT(*) bookCount
-    //                         FROM books
-    //                         GROUP BY author_id) 
-    //                     SELECT a.* , bba.bookCount
-    //                     FROM authors a
-    //                     LEFT JOIN booksByAuthor bba
-    //                     WHERE ?
-    //                     ON bba.author_id = a.id
-    //                     ORDER BY bba.bookCount ?
-    //                 `
-    //             }
-    //             break;
-    //         }
-    //     }
-
-    // if (!queryObject.name){
-    //     const params = [];
-    //     params.push(" 1 = 1")
-    // }
-    // if (queryObject.sort ==='true')
-    // {if (!queryObject.order){
-    //     params.push(" DESC")
-    // }
-    // else if(queryObject.order == "ASC"){
-    //     params.push("ASC")
-    // }
-    // else{
-    //     params.push("DESC")
-    // }}
 
     
     db.all(sql, params , (err, rows) =>{
@@ -92,17 +47,36 @@ export function addNewAuthor(authorDetails, callback){
 }
 
 export async function getAllBooks(queryObject, callback){
-    let sql = `SELECT * FROM books WHERE 1=1`;
+    let sql = `SELECT books.*, authors.name author_name FROM books
+                LEFT JOIN authors
+                ON books.author_id = authors.id
+                WHERE 1=1`;
+
     const params = [];
 
-    for (const [key, value] of Object.entries(queryObject)){
-        sql+=` AND ${key} = ?`;
-        params.push(value)
+    if (queryObject.title){
+        sql+=` AND title LIKE ?`;
+        params.push(`%${queryObject.title}%`);
+    }
+
+    if (queryObject.authorName){
+        sql+=` AND authors.name = ? `;
+        params.push(`${queryObject.authorName}`)
+    }
+
+    if (queryObject.publishedYear){
+        sql+=` AND books.published_year = ?`;
+        params.push(`${queryObject.publishedYear}`)
+    }
+
+    if (queryObject.sortBy){
+        const order = queryObject.order?.toUpperCase() === "DESC" ? "DESC": "ASC";
+        sql+=` ORDER BY ${queryObject.sortBy} ${order}`;
     }
 
     db.all(sql, params, (err, rows) =>{
         if (err) return callback(err);
-        callback(null, rows)
+        callback(null, rows);
     })
 }
 
