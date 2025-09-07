@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import sqlite3 from 'sqlite3';
 import { addNewAuthor, getAllAuthors, getAllBooks, addNewBook, updateBook } from './controllers/mainController.js';
 import {parse} from 'url';
+import { authorValidation, bookValidation } from './validation.js';
 
 sqlite3.verbose()
 
@@ -49,16 +50,27 @@ server.on("request", (req: IncomingMessage, res: ServerResponse) =>{
                 req.on('end', () =>{
                     try{
                         const authorDetails = JSON.parse(body);
-                        addNewAuthor(authorDetails, (err, id) =>{
-                            if (err) return res.end("Error inserting into database", err)
-                            res.writeHead(201, {'Content-Type': 'application/json'})
-                            res.end(JSON.stringify({
-                                message:"author inserted",
-                                author_id: id,
-                                author_name: authorDetails.name,
-                                author_email: authorDetails.email
-                            }))
+
+                        authorValidation(authorDetails, (err) =>{
+                            if (err) {
+                                res.writeHead(400, {'Content-Type':'application/json'});
+                                return res.end(JSON.stringify({error:err}))
+                            }
+
+                            addNewAuthor(authorDetails, (err, id) =>{
+                                if (err) return res.end("Error inserting into database", err)
+                                res.writeHead(201, {'Content-Type': 'application/json'})
+                                res.end(JSON.stringify({
+                                    message:"author inserted",
+                                    author_id: id,
+                                    author_name: authorDetails.name,
+                                    author_email: authorDetails.email
+                                }))
+                            });
+    
                         });
+
+
                     }
                     catch (err){
                         res.end("Couldn't add new author");
@@ -86,19 +98,28 @@ server.on("request", (req: IncomingMessage, res: ServerResponse) =>{
     
                     req.on('end', () =>{
                         try{
-                            const bookDetails = JSON.parse(body)
-                            addNewBook(bookDetails, (err, id) =>{
-                                if (err) return res.end("Error inserting into database", err)
-                                    res.writeHead(201, {'Content-Type': 'application/json'})
-                                    res.end(JSON.stringify({
-                                        message:"new book inserted",
-                                        book_id: id,
-                                        book_name: bookDetails.title,
-                                        book_isbn: bookDetails.isbn,
-                                        published_year: bookDetails.published_year,
-                                        author_id: bookDetails.author_id,
-                                    }))
-                            })
+                            const bookDetails = JSON.parse(body);
+
+                            bookValidation(bookDetails, (err) =>{
+                                if (err) {
+                                    res.writeHead(400, {'Content-Type':'application/json'});
+                                    return res.end(JSON.stringify({error:err}))
+                                }
+
+                                addNewBook(bookDetails, (err, id) =>{
+                                    if (err) return res.end("Error inserting into database" + err)
+                                        res.writeHead(201, {'Content-Type': 'application/json'})
+                                        res.end(JSON.stringify({
+                                            message:"new book inserted",
+                                            book_id: id,
+                                            book_name: bookDetails.title,
+                                            book_isbn: bookDetails.isbn,
+                                            published_year: bookDetails.published_year,
+                                            author_id: bookDetails.author_id,
+                                        }))
+                                })
+    
+                            });
                         } catch (err){
                             res.end("Couldn't add new book")
                         }
