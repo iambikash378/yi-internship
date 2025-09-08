@@ -2,6 +2,24 @@ import { isKeyObject } from "util/types";
 import { db } from "../index.js";
 import { queryObjects } from "v8";
 
+interface Author{
+    id: number;
+    name:string;
+    email:string;
+    books?:{title: string}[];
+}
+
+interface Book{
+    id: number;
+    title: string;
+    isbn: string;
+    published_year: string;
+    author_id: number;
+    author_name?: string;
+    author_email?:string;
+    created_at: object;
+}
+
 export async function getAllAuthors(queryObject, callback){
     let sql = "SELECT * FROM authors WHERE 1=1 ?";
     const params = [];
@@ -15,6 +33,7 @@ export async function getAllAuthors(queryObject, callback){
         FROM authors a
         LEFT JOIN booksByAuthor bba
         ON bba.author_id = a.id
+        WHERE 1=1
     `
 
     if (queryObject.name){
@@ -26,12 +45,27 @@ export async function getAllAuthors(queryObject, callback){
         const order = queryObject.order?.toUpperCase() === 'ASC' ? "ASC" : "DESC";
         sql += ` ORDER BY bba.bookCount ${order}`;
     }
-
     
-    db.all(sql, params , (err, rows) =>{
+    db.all(sql, params , (err, rows : Author[]) =>{
         console.log(sql, params);
         if (err) return callback(err);
-        callback(null, rows)
+
+        if (rows.length === 1){
+            const author = rows[0];
+            const bookParams = [author.id];
+
+            const bookSql = `SELECT title FROM books
+                    WHERE author_id = ?`
+
+            db.all(bookSql, bookParams , (err, books: {title: string}[]) =>{
+                if(err) return callback(err);
+                author.books = books;
+                callback(null, [author])
+            })
+        }
+        else{
+            callback(null, rows);
+        }
     })
 }
 
@@ -74,9 +108,26 @@ export async function getAllBooks(queryObject, callback){
         sql+=` ORDER BY ${queryObject.sortBy} ${order}`;
     }
 
-    db.all(sql, params, (err, rows) =>{
+    db.all(sql, params, (err, rows: Book[]) =>{
         if (err) return callback(err);
-        callback(null, rows);
+
+        if (rows.length === 1){
+            const book = rows[0];
+            const authorParams = [book.author_id];
+
+            const bookSql = `SELECT name, email FROM authors
+                    WHERE id = ?`
+
+            db.all(bookSql, authorParams , (err, authorDetails: {name: string, email: string}[]) =>{
+                if(err) return callback(err);
+                book.author_name = authorDetails[0].name;
+                book.author_email = authorDetails[0].email;
+                callback(null, [book])
+            })
+        }
+        else{
+            callback(null, rows);
+        }
     })
 }
 
@@ -95,7 +146,7 @@ export function addNewBook(bookDetails, callback){
 export function updateBook(bookUpdatedDetails, id, callback){
     db.run(
         `UPDATE books 
-        SET title='${bookUpdatedDetails.title}', isbn = '${bookUpdatedDetails.isbn}' , author_id = '${bookUpdatedDetails.isbn}', published_year='${bookUpdatedDetails.published_year}'
+        SET title='${bookUpdatedDetails.title}', isbn = '${bookUpdatedDetails.isbn}' , author_id = '${bookUpdatedDetails.author_id}', published_year='${bookUpdatedDetails.published_year}'
         WHERE id = ${id}
         `
     , function(err){
